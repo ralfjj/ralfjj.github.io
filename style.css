@@ -527,3 +527,14 @@ html.lb-open{overflow:hidden}
 .me-end figure{margin:0}.me-end img{display:block;width:100%;height:auto}
 @media (max-width:760px){.about-top{grid-template-columns:1fr;margin:0 var(--m);gap:8vh}
   .about-top blockquote.bio{margin-left:.5em}.me-end{margin:10vh var(--m) 0;width:60%}}
+/* boss 27.11 b: phone — one photo above the text, one below, tighter */
+@media (max-width:760px){
+  .about-wrap{padding-top:12vh}
+  .about-top{gap:5vh}
+  .about-top .me{display:contents}
+  .about-top .me figure:first-child{order:-1}
+  .about-top blockquote.bio{order:0}
+  .about-top .me figure:last-child{order:1}
+  .about-wrap .sec{margin-top:12vh}
+  .me-end{margin-top:8vh}
+}
