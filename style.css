@@ -286,7 +286,8 @@ body:not(.at-top) .down{opacity:0;transform:translateY(8px);pointer-events:none}
   opacity:0;transform:translateY(6px);transition:opacity .35s var(--out),transform .35s var(--out)}
 .tile-wrap:hover .jump,.jump:focus-within{opacity:1;transform:none}
 .jump a{padding:9px 13px;border:1px solid rgba(255,255,255,.75);background:rgba(10,10,10,.35);color:#fff;font-size:var(--s);line-height:1;
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:background .25s,color .25s}
+  transition:background .25s,color .25s}
+@media (hover:hover) and (min-width:761px){.tile-wrap:hover .jump a,.jump:focus-within a{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}}
 .jump a:hover,.jump a:focus-visible{background:#fff;color:var(--ink);outline:none}
 .sec{scroll-margin-top:90px}
 @media (max-width:760px),(hover:none){.jump{opacity:1;transform:none}}
@@ -377,8 +378,8 @@ html.lb-open{overflow:hidden}
 .prev:hover i{transform:translateX(-6px)}
 
 /* header with trailer: credits sit at the left margin; slide back to the column once scrolled */
-.caption{transition:left .6s var(--out)}
-.at-top .caption{left:var(--m)}
+.caption{transition:opacity .5s var(--out),transform .6s var(--out)}
+@media (min-width:761px){.at-top .caption{transform:translateX(calc(var(--m) - var(--col)))}}   /* transform, not left: no layout per frame */
 /* "Stills" cue: no box, a big tail-less chevron under the word */
 .down{flex-direction:column;gap:6px;padding:8px 6px 4px;border:0;background:none;mix-blend-mode:difference;letter-spacing:.04em}
 .down i{font-size:0;width:34px;height:20px;position:relative}
@@ -481,11 +482,37 @@ html.lb-open{overflow:hidden}
 .tile .t,.tile .y{will-change:transform}
 .tile .coming{justify-content:flex-start;padding-top:12%}
 
-/* home tiles: per-film title colour where the difference blend gets too busy (Ralf's notes) */
-.tile:is([href$="the-swedish-torpedo.html"],[href$="attack-on-finland.html"],[href$="ghost-division.html"],[href$="last-sentinel.html"],[href$="dawn-of-war.html"]) :is(.t,.y){
-  mix-blend-mode:normal;color:#fff;text-shadow:0 0 28px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35)}
-.tile[href$="tommy-cash-racked.html"] :is(.t,.y){mix-blend-mode:normal;color:#e8733a;text-shadow:0 1px 14px rgba(0,0,0,.35)}   /* orange of the middle guy's argyle */
-.tile[href$="erik-kivisuda.html"] :is(.t,.y){mix-blend-mode:normal;color:#1f4c8f;text-shadow:0 0 24px rgba(255,255,255,.35)}      /* deep blue against the pale foggy sky */
-.tile[href$="cell-8.html"] :is(.t,.y){mix-blend-mode:normal;color:#56bdf0;text-shadow:0 1px 10px rgba(0,0,0,.25)}                 /* the blue the "8" had */
-.tile[href$="the-reindeer-mafia.html"] :is(.t,.y){opacity:.72}                                                                      /* softer darks */
-.tile:is([href$="the-swedish-torpedo.html"],[href$="attack-on-finland.html"],[href$="ghost-division.html"],[href$="last-sentinel.html"],[href$="dawn-of-war.html"],[href$="tommy-cash-racked.html"],[href$="erik-kivisuda.html"],[href$="cell-8.html"]) .halo{display:none}
+/* boss: tile colour v2 - keep the difference blend (colour moves on scroll), only nudge it.
+   --dim: soft shade on the photo right under the title -> inverted text comes out whiter, less rainbow.
+   tinted colour: difference with a tint shifts the moving colour toward a target hue. */
+.tile .ph::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 62% 20% at 50% 52%,rgba(0,0,0,var(--dim,0)),transparent 72%)}
+.tile[href$="the-swedish-torpedo.html"]{--dim:.38}
+.tile[href$="attack-on-finland.html"]{--dim:.36}
+.tile[href$="ghost-division.html"]{--dim:.46}
+.tile[href$="last-sentinel.html"]{--dim:.3}
+.tile[href$="dawn-of-war.html"]{--dim:.5}
+.tile[href$="tommy-cash-racked.html"] :is(.t,.y):not(.halo){color:#ffa671}      /* lands on the sweater orange */
+.tile[href$="erik-kivisuda.html"] :is(.t,.y):not(.halo){color:#7499d2}          /* lands on a deep blue, not brown */
+.tile[href$="cell-8.html"] :is(.t,.y):not(.halo){color:#c5ffff}                 /* pushes the whole title toward the 8's blue */
+.tile[href$="the-reindeer-mafia.html"] :is(.t,.y):not(.halo){opacity:.85}       /* softer darks */
+
+/* ================= QA pass 2026-11-26 night: hit areas + precision ================= */
+/* bigger hit areas without moving anything: padding out, same negative margin back */
+@media (min-width:761px){.top a{padding:8px 0;margin:-8px 0;background-origin:content-box}}
+@media (max-width:760px){.rgo{padding:12px 0;margin:-12px 0}.lost-text a{display:inline-block;padding:12px 0;margin:-12px 0}}
+/* phone header (Ralf): the five links spread across the full width with exactly equal gaps; 44px tall tap areas
+   (Commercials and About were 5px apart at 390 and overlapped below 380) */
+@media (max-width:760px){
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .top .lead,.top .lead .nav,.top>.nav{display:contents}
+  .top a,.top .lead>a,.nav a{display:block;line-height:14px;padding:15px 0;margin:-15px 0;background-origin:content-box}
+}
+@media (max-width:374px){.top{font-size:12px}}
+/* phone quick links on the home tiles: 44px tap height without bigger boxes; on the narrowest phones they may wrap instead of running off the edge (3px overflow at 360) */
+@media (max-width:760px){.jump a{position:relative}.jump a::after{content:'';position:absolute;left:0;right:0;top:-7px;bottom:-7px}}
+@media (max-width:380px){.jump{flex-wrap:wrap;row-gap:14px}.jump a{padding:8px 7px}}
+/* "Coming to theatres" is letter-spaced: balance the trailing tracking so the line sits truly centred over "Soon" */
+.coming em{padding-left:.32em}
+/* phone bottom bar: "Back to Works" reads as one phrase, arrow alone on the right (space-between had split it into three) */
+@media (max-width:760px){.next{justify-content:flex-start}.next span{margin-right:.35em}.next i{margin-left:auto;padding-left:12px}}

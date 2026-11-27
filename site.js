@@ -88,24 +88,27 @@
   // ---------- cursor tag (almira: black box trailing the pointer with lerp .1, wipes open)
   var tag = document.querySelector('.tag');
   if (tag && hover) {
-    var tp = tag.firstElementChild, mx = 0, my = 0, tx = 0, ty = 0, on = null;
+    var tp = tag.firstElementChild, mx = 0, my = 0, tx = 0, ty = 0, on = null, tw = 0, running = false, lastT = '';
+    // width is read once when the label changes (not every frame: that forced a layout per frame), loop sleeps once settled
+    var follow = function () {
+      tx += (mx - tx) * (reduce ? 1 : 0.1); ty += (my - ty) * (reduce ? 1 : 0.1);
+      var x = tx + 14 + tw > innerWidth - 10 ? tx - 14 - tw : tx + 14;   // flip left near the right edge
+      var v = 'translate3d(' + x.toFixed(1) + 'px,' + (ty + 18).toFixed(1) + 'px,0)';
+      if (v !== lastT) { lastT = v; tag.style.transform = v; }
+      if (Math.abs(mx - tx) + Math.abs(my - ty) > 0.2) requestAnimationFrame(follow); else running = false;
+    };
+    var wake = function () { if (!running) { running = true; requestAnimationFrame(follow); } };
     document.addEventListener('mousemove', function (e) {
       mx = e.clientX; my = e.clientY;
       var t = e.target.closest && e.target.closest('[data-tag]');
       if (t !== on) {
         on = t;
-        if (t) { if (!tag.classList.contains('on')) { tx = mx; ty = my; } tp.textContent = t.getAttribute('data-tag'); tag.classList.add('on'); }
+        if (t) { if (!tag.classList.contains('on')) { tx = mx; ty = my; } tp.textContent = t.getAttribute('data-tag'); tw = tag.offsetWidth; tag.classList.add('on'); }
         else tag.classList.remove('on');
       }
+      wake();
     }, { passive: true });
     document.addEventListener('mouseleave', function () { on = null; tag.classList.remove('on'); });
-    var follow = function () {
-      tx += (mx - tx) * (reduce ? 1 : 0.1); ty += (my - ty) * (reduce ? 1 : 0.1);
-      var x = tx + 14 + tag.offsetWidth > innerWidth - 10 ? tx - 14 - tag.offsetWidth : tx + 14;   // flip left near the right edge
-      tag.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + (ty + 18).toFixed(1) + 'px,0)';
-      requestAnimationFrame(follow);
-    };
-    requestAnimationFrame(follow);
   }
 
   // ---------- reveal frames: each photo is a window onto a picture that moves slower than the page
@@ -119,20 +122,23 @@
       frames.push({ f: f, img: img, k: f.parentNode.classList.contains('pic') ? 0.10 : 0.14 });
     });
     var vh = window.innerHeight;
+    // frame positions are cached in page coordinates (re-measured on resize / load / layout change),
+    // so a scrolling frame does no layout reads at all, only transform writes
     var size = function () {
       vh = window.innerHeight;
+      var sy = window.scrollY;
       frames.forEach(function (o) { o.h = o.f.offsetHeight; o.extra = Math.round(o.k * o.h); o.img.style.height = (o.h + o.extra) + 'px'; });
+      frames.forEach(function (o) { o.top = o.f.getBoundingClientRect().top + sy; });
     };
-    var lastY = null, tops = [];
+    var lastY = null;
     var paint = function (force) {
       var y = window.scrollY;
       if (y === lastY && !force) return;   // nothing moved: no work this frame
       lastY = y;
       var i, o;
-      for (i = 0; i < frames.length; i++) tops[i] = frames[i].f.getBoundingClientRect().top;   // read everything first...
-      for (i = 0; i < frames.length; i++) {                                                     // ...then write, so one layout per frame
+      for (i = 0; i < frames.length; i++) {
         o = frames[i];
-        var t = tops[i];
+        var t = o.top - y;
         if (t + o.h < -50 || t > vh + 50) continue;
         var p = Math.min(1, Math.max(0, (vh - t) / (vh + o.h)));   // 0 entering bottom -> 1 leaving top
         var v = (-p * o.extra).toFixed(1);
@@ -140,8 +146,11 @@
       }
     };
     size(); paint(true);
-    window.addEventListener('resize', function () { size(); paint(true); });
-    window.addEventListener('load', function () { size(); paint(true); });
+    var resized = function () { size(); paint(true); if (window.__drift) window.__drift(); };
+    window.addEventListener('resize', resized);
+    window.addEventListener('load', resized);
+    if (document.fonts) document.fonts.ready.then(resized);
+    if ('ResizeObserver' in window) { var rq = 0; new ResizeObserver(function () { cancelAnimationFrame(rq); rq = requestAnimationFrame(resized); }).observe(body); }
 
     // almira's Lenis settings: 1.2s, exponential ease-out, wheel x0.8
     lenis = window.Lenis ? new window.Lenis({ duration: 1.2, easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); }, wheelMultiplier: 0.8 }) : null;
@@ -202,6 +211,8 @@
       current = src;
       var img = new Image();
       img.onload = function () {
+        if (current !== src) return;   // a newer film was pointed at while this one loaded
+        if (img.decode) img.decode().catch(function () {});   // decode off-thread before the swap, so the fade-in never hitches
         stage.classList.add('fade');
         setTimeout(function () { if (current === src) { stage.removeAttribute('srcset'); stage.src = src; stage.classList.remove('fade'); } }, 180);
       };
@@ -234,8 +245,8 @@
       if (Math.abs(e.clientX - px) + Math.abs(e.clientY - py) < 2) return;   // Chrome fires fake moves after scrolling
       px = e.clientX; py = e.clientY;
       var w = e.target.closest && e.target.closest('.tile-wrap'), t = w ? w.querySelector('.tile') : (e.target.closest && e.target.closest('.tile'));
-      if (!t || t === lastTile) return;   // cursor off the tiles: keep the last film on the big screen
-      lastTile = t;
+      if (!t || (t === lastTile && armed)) return;   // cursor off the tiles: keep the last film on the big screen
+      lastTile = t;                                   // (the film the opening scroll already picked silently still counts as a first point)
       armed = true;
       clearTimeout(timer);
       timer = setTimeout(function () { show(t && t.dataset.cover ? t.dataset.cover : stage.dataset.default, t && t.dataset.video); }, 220);
@@ -407,26 +418,47 @@
   }, 2600);
 })();
 
-/* home: film names on the tiles drift at their own pace while scrolling (soft, lagging follow) */
+/* home: film names on the tiles drift at their own pace while scrolling (soft, lagging follow)
+   tile positions are cached (no layout reads per frame); the looping copies of one film share one drift value,
+   so the invisible jump between copies never makes a title hop */
 (function () {
   if (!document.querySelector('main.split') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  var items = [].map.call(document.querySelectorAll('main.split .tile'), function (tile) {
-    return { tile: tile, t: [].slice.call(tile.querySelectorAll('.t')), y: tile.querySelector('.y'), c: 0 };
+  var tiles = [].slice.call(document.querySelectorAll('main.split .tile'));
+  var n = tiles.filter(function (t) { return !t.closest('[aria-hidden="true"]'); }).length || tiles.length;
+  var shared = [];
+  var items = tiles.map(function (tile, i) {
+    var k = i % n; shared[k] = shared[k] || { c: 0, f: -1 };
+    return { tile: tile, t: [].slice.call(tile.querySelectorAll('.t')), y: tile.querySelector('.y'), s: shared[k], v: '' };
   }).filter(function (o) { return o.t.length; });
   if (!items.length) return;
+  var vh = 0, frame = 0;
+  var measure = function () {
+    vh = window.innerHeight;
+    var sy = window.scrollY;
+    items.forEach(function (o) { var r = o.tile.getBoundingClientRect(); o.top = r.top + sy; o.h = r.height; });
+  };
+  window.__drift = measure;
+  measure();
+  window.addEventListener('resize', measure);
   var tick = function () {
-    var vh = window.innerHeight;
-    items.forEach(function (o) {
-      var r = o.tile.getBoundingClientRect();
-      if (r.bottom < -100 || r.top > vh + 100) return;
-      var d = (r.top + r.height / 2 - vh / 2) / vh;        // -1 above centre … +1 below
-      var goal = d * vh * 0.16;                             // names lag behind the picture
-      o.c += (goal - o.c) * 0.07;                           // eased follow = the floaty motion
-      if (Math.abs(goal - o.c) < 0.05 && o.done) return;
-      o.done = Math.abs(goal - o.c) < 0.05;
-      o.t.forEach(function (el) { el.style.transform = 'translate3d(0,' + o.c.toFixed(2) + 'px,0)'; });
-      if (o.y) o.y.style.transform = 'translate3d(0,' + (o.c * 1.35).toFixed(2) + 'px,0)';
-    });
+    frame++;
+    var y = window.scrollY;
+    for (var i = 0; i < items.length; i++) {
+      var o = items[i], top = o.top - y;
+      if (top + o.h < -100 || top > vh + 100) continue;
+      var s = o.s;
+      if (s.f !== frame) {                                   // advance each film's follow once per frame
+        s.f = frame;
+        var goal = (top + o.h / 2 - vh / 2) / vh * vh * 0.16;   // names lag behind the picture
+        s.c += (goal - s.c) * 0.07;                            // eased follow = the floaty motion
+        if (Math.abs(goal - s.c) < 0.05) s.c = goal;
+      }
+      var v = s.c.toFixed(2);
+      if (v === o.v) continue;
+      o.v = v;
+      o.t.forEach(function (el) { el.style.transform = 'translate3d(0,' + v + 'px,0)'; });
+      if (o.y) o.y.style.transform = 'translate3d(0,' + (s.c * 1.35).toFixed(2) + 'px,0)';
+    }
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
