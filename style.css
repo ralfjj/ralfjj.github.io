@@ -544,3 +544,5 @@ html.lb-open{overflow:hidden}
   article.chapter:nth-of-type(even) .beat{grid-column:7/10;grid-row:1;padding-right:0;padding-left:var(--g)}
   article.chapter:nth-of-type(even) .shots figure.tall{margin-left:auto}
 }
+/* boss 27.11: spoiler note under Behind the scenes */
+.story .intro p.spoiler{font-weight:700;margin-bottom:1.6em}
