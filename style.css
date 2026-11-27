@@ -538,3 +538,9 @@ html.lb-open{overflow:hidden}
   .about-wrap .sec{margin-top:12vh}
   .me-end{margin-top:8vh}
 }
+/* boss 27.11: on-set story chapters alternate — even chapters: photos left, text right */
+@media (min-width:761px){
+  article.chapter:nth-of-type(even) .shots{grid-column:1/6;grid-row:1}
+  article.chapter:nth-of-type(even) .beat{grid-column:7/10;grid-row:1;padding-right:0;padding-left:var(--g)}
+  article.chapter:nth-of-type(even) .shots figure.tall{margin-left:auto}
+}
