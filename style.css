@@ -516,3 +516,14 @@ html.lb-open{overflow:hidden}
 .coming em{padding-left:.32em}
 /* phone bottom bar: "Back to Works" reads as one phrase, arrow alone on the right (space-between had split it into three) */
 @media (max-width:760px){.next{justify-content:flex-start}.next span{margin-right:.35em}.next i{margin-left:auto;padding-left:12px}}
+
+/* boss 27.11: about photos beside the bio, field photo small at the end */
+.about-top{display:grid;grid-template-columns:minmax(0,760px) minmax(0,1fr);gap:calc(var(--g) * 3);margin:0 var(--m) 0 var(--col);align-items:start}
+.about-top blockquote.bio{margin:0;width:auto}
+.about-top .me{grid-template-columns:1fr;margin:0;gap:var(--g)}
+.about-top .me figure:first-child{grid-row:auto;height:auto}
+.about-top .me figure:first-child img{height:auto}
+.me-end{margin:14vh var(--m) 0 var(--col);width:min(360px,calc(100% - var(--col) - var(--m)))}
+.me-end figure{margin:0}.me-end img{display:block;width:100%;height:auto}
+@media (max-width:760px){.about-top{grid-template-columns:1fr;margin:0 var(--m);gap:8vh}
+  .about-top blockquote.bio{margin-left:.5em}.me-end{margin:10vh var(--m) 0;width:60%}}
